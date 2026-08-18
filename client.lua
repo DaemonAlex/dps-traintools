@@ -84,7 +84,9 @@ local STATIONS = {
     vec3(2610.99, 1649.71, 26.62), vec3(669.27, -1104.79, 22.74),
     vec3(217.43, -2436.63, 6.21),  vec3(1870.67, 3544.59, 37.67),
     vec3(243.68, -1198.62, 37.05), vec3(-549.43, -1290.78, 24.91),
-    vec3(-1104.42, -2728.99, -9.32), vec3(-1067.23, -2708.14, -9.32),
+    vec3(-900.24, -2343.76, -13.65), vec3(-1104.42, -2728.99, -9.32),
+    vec3(-1067.23, -2708.14, -9.32), vec3(-866.52, -2294.89, -13.63),
+    vec3(-528.64, -1267.25, 24.90), vec3(284.76, -1209.94, 37.12),
     vec3(-287.12, -301.92, 8.15),  vec3(-848.52, -148.13, 18.04),
 }
 local function atStation(pos)
@@ -230,11 +232,8 @@ local dressedTrains = {}   -- [engineEntity] = { peds = {...} }
 
 local function spawnRider(carriage, off)
     local model = RIDERS.models[math.random(#RIDERS.models)]
-    local hash = GetHashKey(model)
-    RequestModel(hash)
-    local deadline = GetGameTimer() + 3000
-    while not HasModelLoaded(hash) and GetGameTimer() < deadline do Wait(10) end
-    if not HasModelLoaded(hash) then return nil end
+    local hash = lib.requestModel(model, 3000)
+    if not hash then return nil end
     local pos = GetEntityCoords(carriage)
     local ped = CreatePed(4, hash, pos.x, pos.y, pos.z + 1.0, 0.0, false, false)  -- LOCAL ped
     SetModelAsNoLongerNeeded(hash)
@@ -273,14 +272,14 @@ end
 CreateThread(function()
     while true do
         Wait(5000)
-        -- dress newly-seen trains
+        -- dress newly-seen trains. EVERY carriage is vehicle class 21, so resolve
+        -- each to its engine and dress once per engine (was dressing per-carriage
+        -- -> ~Nx rider overspawn and stale dressedTrains keys).
         for _, veh in ipairs(GetGamePool('CVehicle')) do
-            if GetVehicleClass(veh) == 21 and not dressedTrains[veh] then
-                -- engines only (a carriage's chain is reached from its engine);
-                -- heuristic: entity with carriage index 0 attached is the head
-                local c0 = GetTrainCarriage(veh, 0)
-                if c0 and c0 ~= 0 and DoesEntityExist(c0) then
-                    dressTrain(veh)
+            if GetVehicleClass(veh) == 21 then
+                local engine = GetTrainCarriageEngine(veh)
+                if engine and engine ~= 0 and DoesEntityExist(engine) and not dressedTrains[engine] then
+                    dressTrain(engine)
                 end
             end
         end
@@ -294,4 +293,22 @@ CreateThread(function()
             end
         end
     end
+end)
+
+-- Clean up everything this resource spawned on stop/restart (it exists to be
+-- redeployed independently, so leaks would accumulate every deploy)
+AddEventHandler('onResourceStop', function(res)
+    if res ~= GetCurrentResourceName() then return end
+    for engine, bucket in pairs(dressedTrains) do
+        for _, ped in ipairs(bucket.peds) do
+            if DoesEntityExist(ped) then DeleteEntity(ped) end
+        end
+        dressedTrains[engine] = nil
+    end
+    if seated then
+        DetachEntity(PlayerPedId(), true, true)
+        ClearPedTasks(PlayerPedId())
+        seated = nil
+    end
+    if previewBlip then RemoveBlip(previewBlip) previewBlip = nil end
 end)
