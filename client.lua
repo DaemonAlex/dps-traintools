@@ -1,7 +1,8 @@
--- DPS railway rider tools. Separate resource so deploying it never restarts
+-- DPS railway rider tools. Separate resource so deploys never restart
 -- dps-trains (which would reset every train to its spawn).
 
-local seated = nil  -- { carriage = ent } when attached (no-native-seat mode)
+local seated = nil   -- { carriage = ent } while attach-seated
+local promptShown = nil
 
 local function nearestCarriage(maxDist)
     local pos = GetEntityCoords(PlayerPedId())
@@ -20,35 +21,27 @@ local function nearestCarriage(maxDist)
     return best
 end
 
-RegisterCommand('board', function()
+local function doBoard()
     local ped = PlayerPedId()
     if seated then return end
-    local carriage = nearestCarriage(14.0)
-    if not carriage then
-        print('[board] no train carriage within 14m')
-        return
-    end
-    -- try real seats first
+    local carriage = nearestCarriage(8.0)
+    if not carriage then return end
     local seats = GetVehicleModelNumberOfSeats(GetEntityModel(carriage))
     for seat = 0, seats - 2 do
         if IsVehicleSeatFree(carriage, seat) then
             TaskWarpPedIntoVehicle(ped, carriage, seat)
-            print(('[board] native seat %d'):format(seat))
             return
         end
     end
-    -- no native passenger seats: attach seated inside the coach (metro style)
+    -- coaches ship no native seat bones: attach-seat inside the car instead
     local off = { x = 0.9 * (math.random(0, 1) == 0 and 1 or -1), y = math.random(-60, 60) / 10.0, z = 0.6 }
     AttachEntityToEntity(ped, carriage, 0, off.x, off.y, off.z, 0.0, 0.0, 90.0, false, true, false, true, 2, true)
-    RequestAnimDict('anim@amb@business@bgen@bgen_no_work@')
-    local deadline = GetGameTimer() + 3000
-    while not HasAnimDictLoaded('anim@amb@business@bgen@bgen_no_work@') and GetGameTimer() < deadline do Wait(10) end
+    lib.requestAnimDict('anim@amb@business@bgen@bgen_no_work@', 3000)
     TaskPlayAnim(ped, 'anim@amb@business@bgen@bgen_no_work@', 'sit_phone_phoneputdown_idle_nowork', 8.0, 8.0, -1, 1, 1.0, false, false, false)
     seated = { carriage = carriage }
-    print('[board] attached-seat mode (coach has no native seats)')
-end, false)
+end
 
-RegisterCommand('disembark', function()
+local function doDisembark()
     local ped = PlayerPedId()
     if seated then
         DetachEntity(ped, true, true)
@@ -59,13 +52,49 @@ RegisterCommand('disembark', function()
             local pos = GetOffsetFromEntityInWorldCoords(c, 2.5, 0.0, 0.5)
             SetEntityCoords(ped, pos.x, pos.y, pos.z, false, false, false, false)
         end
-        print('[disembark] off the train')
     elseif IsPedInAnyVehicle(ped, false) then
         TaskLeaveVehicle(ped, GetVehiclePedIsIn(ped, false), 0)
     end
-end, false)
+end
 
--- seat-mapping survey tool: stand at a seat spot, /seatmark, offsets log server-side
+-- proximity prompt: near a coach -> [E] Board; while riding -> [E] Disembark
+CreateThread(function()
+    while true do
+        local want = nil
+        if seated then
+            want = 'disembark'
+        else
+            local ped = PlayerPedId()
+            if not IsPedInAnyVehicle(ped, false) and nearestCarriage(5.5) then
+                want = 'board'
+            end
+        end
+
+        if want ~= promptShown then
+            if want == 'board' then
+                lib.showTextUI('[E] Board Train', { position = 'right-center', icon = 'train' })
+            elseif want == 'disembark' then
+                lib.showTextUI('[E] Disembark', { position = 'right-center', icon = 'person-walking-arrow-right' })
+            else
+                lib.hideTextUI()
+            end
+            promptShown = want
+        end
+
+        if want then
+            Wait(0)
+            if IsControlJustPressed(0, 38) then  -- E
+                if want == 'board' then doBoard() else doDisembark() end
+            end
+        else
+            Wait(600)
+        end
+    end
+end)
+
+RegisterCommand('board', doBoard, false)
+RegisterCommand('disembark', doDisembark, false)
+
 RegisterCommand('seatmark', function()
     local ped = PlayerPedId()
     local pos = GetEntityCoords(ped)
