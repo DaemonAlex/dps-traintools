@@ -228,7 +228,8 @@ local RIDERS = {
         'a_m_y_genstreet_01',
     },
 }
-local dressedTrains = {}   -- [engineEntity] = { peds = {...} }
+local dressedTrains = {}   -- [engineEntity] = { peds = {...}, members = {...} }
+local carriageOwner = {}   -- [carriageEntity] = engineEntity, so a train is dressed once
 
 local function spawnRider(carriage, off)
     local model = RIDERS.models[math.random(#RIDERS.models)]
@@ -247,11 +248,14 @@ local function spawnRider(carriage, off)
 end
 
 local function dressTrain(engine)
-    local bucket = { peds = {} }
+    local bucket = { peds = {}, members = {} }
     dressedTrains[engine] = bucket
+    carriageOwner[engine] = engine
     for i = 0, 12 do
         local c = GetTrainCarriage(engine, i)
         if not c or c == 0 or not DoesEntityExist(c) then break end
+        bucket.members[#bucket.members + 1] = c
+        carriageOwner[c] = engine
         local model = GetEntityArchetypeName(c) or ''
         if model == 'streakc' or model == 'streakcoasterc' then
             for _ = 1, math.random(RIDERS.minPerCoach, RIDERS.maxPerCoach) do
@@ -276,10 +280,15 @@ CreateThread(function()
         -- each to its engine and dress once per engine (was dressing per-carriage
         -- -> ~Nx rider overspawn and stale dressedTrains keys).
         for _, veh in ipairs(GetGamePool('CVehicle')) do
-            if GetVehicleClass(veh) == 21 then
-                local engine = GetTrainCarriageEngine(veh)
-                if engine and engine ~= 0 and DoesEntityExist(engine) and not dressedTrains[engine] then
-                    dressTrain(engine)
+            -- EVERY carriage is vehicle class 21, so this pool contains the whole
+            -- consist. Dress once per train: only an entity that actually has a
+            -- second carriage is treated as the head, and anything already claimed
+            -- by a dressed train is skipped. (An earlier version called
+            -- GetTrainCarriageEngine, which is NOT a real native and errored here.)
+            if GetVehicleClass(veh) == 21 and not dressedTrains[veh] and not carriageOwner[veh] then
+                local second = GetTrainCarriage(veh, 1)
+                if second and second ~= 0 and DoesEntityExist(second) then
+                    dressTrain(veh)
                 end
             end
         end
@@ -289,6 +298,10 @@ CreateThread(function()
                 for _, ped in ipairs(bucket.peds) do
                     if DoesEntityExist(ped) then DeleteEntity(ped) end
                 end
+                for _, c in ipairs(bucket.members or {}) do
+                    carriageOwner[c] = nil
+                end
+                carriageOwner[engine] = nil
                 dressedTrains[engine] = nil
             end
         end
