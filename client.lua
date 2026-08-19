@@ -26,7 +26,10 @@ local function doBoard()
     if seated then return end
     local carriage = nearestCarriage(8.0)
     if not carriage then return end
-    if GetEntitySpeed(carriage) > 1.5 then return end  -- no boarding moving trains
+    -- No speed requirement. Being AT A STATION is the condition, not the train
+    -- standing still - so you can catch one that is already pulling out, which
+    -- is the point of a 10s dwell. Trains crawl from 180m out on approach
+    -- anyway, so anything at a platform is slow by the time you reach it.
     local seats = GetVehicleModelNumberOfSeats(GetEntityModel(carriage))
     for seat = 0, seats - 2 do
         if IsVehicleSeatFree(carriage, seat) then
@@ -159,7 +162,7 @@ CreateThread(function()
             if not IsPedInAnyVehicle(ped, false) then
                 local c = nearestCarriage(5.5)
                 -- stopped train + at a platform = boarding allowed
-                if c and GetEntitySpeed(c) < 1.5 and atStation(GetEntityCoords(ped)) then
+                if c and atStation(GetEntityCoords(ped)) then
                     want = 'board'
                 end
             end
