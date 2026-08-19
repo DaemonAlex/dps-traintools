@@ -348,3 +348,82 @@ AddEventHandler('onResourceStop', function(res)
     end
     if previewBlip then RemoveBlip(previewBlip) previewBlip = nil end
 end)
+
+
+-- /traindoors [0|1|2|off]
+--
+-- Door diagnostics. dps-trains opens doors by calling GetTrainDoorCount on each
+-- carriage and then SetTrainDoorOpenRatio on the even/odd indices to pick a
+-- side. If a model exposes no door components that count comes back 0, the
+-- index list is empty, and the doors silently do nothing - no error, no log
+-- line, nothing to distinguish it from a broken script.
+--
+-- The custom metrotrain in [vehicles]/[civilian]/metrotrain streams a replaced
+-- model while its __resource.lua has every data_file line commented out, so it
+-- runs on the stock vehiclelayouts. This command reports what the natives
+-- actually see per carriage and drives the doors directly, which separates a
+-- model/layout problem from a code problem.
+--
+--   /traindoors      report door counts only, change nothing
+--   /traindoors 0    open the left side
+--   /traindoors 1    open the right side
+--   /traindoors 2    open both sides
+--   /traindoors off  close everything
+RegisterCommand('traindoors', function(_, args)
+    local near = nearestCarriage(60.0)
+    if not near then
+        print('[traindoors] no train carriage within 60m - stand next to one')
+        return
+    end
+
+    -- walk back to the head of the consist so the whole chain gets reported
+    local head = near
+    for _, veh in ipairs(GetGamePool('CVehicle')) do
+        if GetVehicleClass(veh) == 21 then
+            for i = 0, 30 do
+                local c = GetTrainCarriage(veh, i)
+                if c == near then head = veh break end
+            end
+        end
+    end
+
+    local action = args[1]
+    local side = tonumber(action)
+    local closing = (action == 'off')
+
+    print(('[traindoors] nearest carriage %s, head of consist %s'):format(
+        tostring(near), tostring(head)))
+
+    local idx, total = 0, 0
+    local carriage = head
+    while carriage and carriage ~= 0 and DoesEntityExist(carriage) and idx < 32 do
+        local model = GetEntityArchetypeName(carriage) or '?'
+        local count = GetTrainDoorCount(carriage) or 0
+        total = total + count
+        print(('[traindoors]   [%d] %-18s doors=%d'):format(idx, model, count))
+
+        if count > 0 and (side or closing) then
+            for i = 0, count - 1 do
+                local onThisSide = (side == 2)
+                    or (side == 1 and i % 2 == 0)
+                    or (side == 0 and i % 2 == 1)
+                if closing then
+                    SetTrainDoorOpenRatio(carriage, i, 0.0)
+                elseif onThisSide then
+                    SetTrainDoorOpenRatio(carriage, i, 1.0)
+                end
+            end
+        end
+
+        idx = idx + 1
+        carriage = GetTrainCarriage(head, idx)
+        if carriage == head then break end
+    end
+
+    print(('[traindoors] %d carriages, %d door components total'):format(idx, total))
+    if total == 0 then
+        print('[traindoors] zero doors across the whole consist: the model exposes no')
+        print('[traindoors] door components, so this is a model/layout problem and no')
+        print('[traindoors] amount of script change will open them.')
+    end
+end, false)
