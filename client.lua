@@ -40,12 +40,35 @@ local function doBoard()
     -- comes later - for now anyone can ride anywhere.)
     local model = GetEntityArchetypeName(carriage) or ''
     local off
+
+    -- Per-car seating. Freight cars are ridable for the fun of it: flat cars and
+    -- log flats give you a deck, hoppers put you down in the well, the caboose
+    -- has its platform. Tune any of these by standing on the spot and running
+    -- /seatmark, which prints model + offset.
+    local FREIGHT_SEATS = {
+        -- keys are the real archetype names from the freight consist in trains.xml
+        freightflatlogs = { z = 1.85, spread = 3.0, lateral = 0.7 },  -- on the logs
+        freightgraincar = { z = 1.75, spread = 2.5, lateral = 0.6 },  -- hopper well
+        freightcoal     = { z = 1.75, spread = 2.5, lateral = 0.6 },  -- hopper well
+        freighttanklong = { z = 2.55, spread = 3.5, lateral = 0.5 },  -- on the tank
+        freightcont     = { z = 2.85, spread = 3.5, lateral = 0.9 },  -- on the container
+        freightboxlarge = { z = 2.95, spread = 3.5, lateral = 0.9 },  -- boxcar roof
+        freightstack    = { z = 3.35, spread = 3.5, lateral = 0.9 },  -- double stack
+    }
+
+    local fs = FREIGHT_SEATS[model]
     if model:find('streak') and not model:find('c$') and not model:find('cab') or model == 'sd70mac' or model == 'gevo' then
         -- engine cab: high floor, near the rear of the cab
         off = { x = 0.55 * (math.random(0, 1) == 0 and 1 or -1), y = 5.5, z = 1.35 }
     elseif model == 'freightcaboose' or model:find('cab') then
         -- caboose / cab car: center deck
         off = { x = 0.5 * (math.random(0, 1) == 0 and 1 or -1), y = math.random(-20, 20) / 10.0, z = 1.05 }
+    elseif fs then
+        off = {
+            x = fs.lateral * (math.random(0, 1) == 0 and 1 or -1),
+            y = math.random(-fs.spread * 10, fs.spread * 10) / 10.0,
+            z = fs.z,
+        }
     else
         off = { x = 0.9 * (math.random(0, 1) == 0 and 1 or -1), y = math.random(-60, 60) / 10.0, z = 0.6 }
     end
