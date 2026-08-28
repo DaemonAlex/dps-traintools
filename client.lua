@@ -170,13 +170,13 @@ CreateThread(function()
 
         if want ~= promptShown then
             if want == 'board' then
-                lib.showTextUI('[E] Board Train', { position = 'right-center', icon = 'train' })
+                lib.showTextUI('[E] Board Train', { style = { backgroundColor = '#1b2340', color = '#f4f1ea', borderLeft = '3px solid #ff7a45' }, iconColor = '#ff7a45', position = 'right-center', icon = 'train' })
             elseif want == 'off_now' then
-                lib.showTextUI('[E] Disembark', { position = 'right-center', icon = 'person-walking-arrow-right' })
+                lib.showTextUI('[E] Disembark', { style = { backgroundColor = '#1b2340', color = '#f4f1ea', borderLeft = '3px solid #ff7a45' }, iconColor = '#ff7a45', position = 'right-center', icon = 'person-walking-arrow-right' })
             elseif want == 'off_next' then
-                lib.showTextUI('[E] Disembark at next stop', { position = 'right-center', icon = 'person-walking-arrow-right' })
+                lib.showTextUI('[E] Disembark at next stop', { style = { backgroundColor = '#1b2340', color = '#f4f1ea', borderLeft = '3px solid #ff7a45' }, iconColor = '#ff7a45', position = 'right-center', icon = 'person-walking-arrow-right' })
             elseif want == 'queued' then
-                lib.showTextUI('Disembarking at next stop...', { position = 'right-center', icon = 'clock' })
+                lib.showTextUI('Disembarking at next stop...', { style = { backgroundColor = '#1b2340', color = '#f4f1ea', borderLeft = '3px solid #ff7a45' }, iconColor = '#ff7a45', position = 'right-center', icon = 'clock' })
             else
                 lib.hideTextUI()
             end
