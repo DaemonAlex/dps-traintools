@@ -185,6 +185,14 @@ CreateThread(function()
 
         if want then
             Wait(0)
+            -- Block the game's own "enter vehicle", which shares the E key.
+            -- Without this both fire: we seat you, and the game ALSO runs its
+            -- enter-vehicle behaviour on a train, which on a metrotrain's front
+            -- door means climbing up onto the roof instead of boarding (Damon,
+            -- 2026-09-22). 23 is enter, 75 is exit - held off while the prompt
+            -- is up so riding is entirely ours to control.
+            DisableControlAction(0, 23, true)
+            DisableControlAction(0, 75, true)
             if IsControlJustPressed(0, 38) then  -- E
                 if want == 'board' then
                     doBoard()
