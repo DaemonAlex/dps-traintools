@@ -81,7 +81,7 @@ There is no config file. Edit the constants at the top of `client.lua` sections 
 | Command / key | What it does |
 |---|---|
 | `E` | Board near a train at a station. Disembark, or queue disembark at the next stop, while riding. |
-| `/board` | Board the nearest carriage within 8 m. Does not check for a station. |
+| `/boardtrain` | Board the nearest carriage within 8 m. Does not check for a station. (Was `/board`, retired so it no longer clashes with the airline's boarding.) |
 | `/disembark` | Get off now, whatever the train speed. |
 | `/seatmark` | Needs a carriage within 30 m. Logs the carriage model, your offset from it and your relative heading. Printed to your client console and the server console. Use it to tune seat offsets. |
 | `/traindoors` | Needs a carriage within 60 m. Prints each carriage in the consist with its door count. Changes nothing. |
@@ -93,8 +93,8 @@ There is no config file. Edit the constants at the top of `client.lua` sections 
 
 ## Troubleshooting
 
-- **No boarding prompt.** You must be within 60 m of a position in `STATIONS` and within 5.5 m of a carriage, and you must not be in a vehicle. If your stations are elsewhere, edit `STATIONS`. `/board` works anywhere within 8 m of a carriage.
-- **Nothing happens when boarding with `/board` or E.** Boarding does nothing if you are already seated, or if no carriage is within range.
+- **No boarding prompt.** You must be within 60 m of a position in `STATIONS` and within 5.5 m of a carriage, and you must not be in a vehicle. If your stations are elsewhere, edit `STATIONS`. `/boardtrain` works anywhere within 8 m of a carriage.
+- **Nothing happens when boarding with `/boardtrain` or E.** Boarding does nothing if you are already seated, or if no carriage is within range.
 - **The game climbs onto the roof instead of boarding.** The resource disables controls 23 and 75 while its prompt is up. If another script re-enables them, boarding conflicts.
 - **Doors do not open (`/traindoors` shows `doors=0`).** The train model exposes no door components. The command ends with a message saying so. No script change will open them. Check the model's vehicle layouts.
 - **`/traindoors` says no carriage within 60m.** Stand next to the train and try again.
