@@ -210,7 +210,8 @@ CreateThread(function()
     end
 end)
 
-RegisterCommand('board', doBoard, false)
+-- DPS transit commands follow /board<vehicle> (planes: /boardplane in dps-airlines).
+RegisterCommand('boardtrain', doBoard, false)
 RegisterCommand('disembark', doDisembark, false)
 
 RegisterCommand('seatmark', function()
